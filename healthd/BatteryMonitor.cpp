@@ -160,10 +160,8 @@ BatteryMonitor::PowerSupplyType BatteryMonitor::readPowerSupplyType(const String
         return ANDROID_POWER_SUPPLY_TYPE_UNKNOWN;
 
     ret = (BatteryMonitor::PowerSupplyType)mapSysfsString(buf.c_str(), supplyTypeMap);
-    if (ret < 0) {
-        //KLOG_WARNING(LOG_TAG, "Unknown power supply type '%s'\n", buf.c_str());
+    if (ret < 0)
         ret = ANDROID_POWER_SUPPLY_TYPE_UNKNOWN;
-    }
 
     return ret;
 }
@@ -241,6 +239,7 @@ bool BatteryMonitor::update(void) {
         props.batteryTechnology = String8(buf.c_str());
 
     double MaxPower = 0;
+
     // reinitialize the mChargerNames vector everytime there is an update
     String8 path;
     DIR* dir = opendir(POWER_SUPPLY_SYSFS_PATH);
@@ -263,45 +262,52 @@ bool BatteryMonitor::update(void) {
             case ANDROID_POWER_SUPPLY_TYPE_AC:
             case ANDROID_POWER_SUPPLY_TYPE_USB:
             case ANDROID_POWER_SUPPLY_TYPE_WIRELESS:
+                // Check if any of them is online
                 path.clear();
                 path.appendFormat("%s/%s/online", POWER_SUPPLY_SYSFS_PATH, name);
                 if (access(path.string(), R_OK) == 0) {
                     mChargerNames.add(String8(name));
-                    if (readFromFile(path, &buf) > 0) {
-                        if (buf[0] != '0') {
-                            path.clear();
-                            path.appendFormat("%s/%s/type", POWER_SUPPLY_SYSFS_PATH, name);
-                            switch(readPowerSupplyType(path)) {
-                            case ANDROID_POWER_SUPPLY_TYPE_AC:
-                                props.chargerAcOnline = true;
-                                break;
-                            case ANDROID_POWER_SUPPLY_TYPE_USB:
-                                props.chargerUsbOnline = true;
-                                break;
-                            case ANDROID_POWER_SUPPLY_TYPE_WIRELESS:
-                                props.chargerWirelessOnline = true;
-                                break;
-                            default:
-                                continue;
-                            }
-                            path.clear();
-                            path.appendFormat("%s/%s/current_max", POWER_SUPPLY_SYSFS_PATH, name);
-                            int ChargingCurrent = (access(path.string(), R_OK) == 0) ? getIntField(path) : 0;
+		            if (getIntField(path)) {
+			            path.clear();
+			            path.appendFormat("%s/%s/type", POWER_SUPPLY_SYSFS_PATH,
+					              name);
+			            switch(readPowerSupplyType(path)) {
+			            case ANDROID_POWER_SUPPLY_TYPE_AC:
+			                props.chargerAcOnline = true;
+			                break;
+			            case ANDROID_POWER_SUPPLY_TYPE_USB:
+			                props.chargerUsbOnline = true;
+			                break;
+			            case ANDROID_POWER_SUPPLY_TYPE_WIRELESS:
+			                props.chargerWirelessOnline = true;
+			                break;
+			            default:
+			                KLOG_WARNING(LOG_TAG, "%s: Unknown power supply type\n",
+					             name);
+			            }
 
-                            path.clear();
-                            path.appendFormat("%s/%s/voltage_max", POWER_SUPPLY_SYSFS_PATH, name);
-                            int ChargingVoltage = (access(path.string(), R_OK) == 0) ? getIntField(path) : DEFAULT_VBUS_VOLTAGE;
-                            // there are devices that have the file but with a value of 0
-                            if (ChargingVoltage == 0) {
-                                ChargingVoltage = DEFAULT_VBUS_VOLTAGE;
-                            }
-                            double power = ((double)ChargingCurrent / MILLION) * ((double)ChargingVoltage / MILLION);
-                            if (MaxPower < power) {
-                                props.maxChargingCurrent = ChargingCurrent;
-                                props.maxChargingVoltage = ChargingVoltage;
-                                MaxPower = power;
-                            }
-                        }
+			            //If its online, read the voltage and current for power
+			            path.clear();
+			            path.appendFormat("%s/%s/current_max", POWER_SUPPLY_SYSFS_PATH,
+					            name);
+			            int ChargingCurrent =
+				                  (access(path.string(), R_OK) == 0) ? getIntField(path) : 0;
+
+			            path.clear();
+			            path.appendFormat("%s/%s/voltage_max", POWER_SUPPLY_SYSFS_PATH,
+					            name);
+
+			            int ChargingVoltage =
+			              (access(path.string(), R_OK) == 0) ? getIntField(path) :
+			              DEFAULT_VBUS_VOLTAGE;
+
+			            double power = ((double)ChargingCurrent / MILLION) *
+				            ((double)ChargingVoltage / MILLION);
+			            if (MaxPower < power) {
+			                props.maxChargingCurrent = ChargingCurrent;
+			                props.maxChargingVoltage = ChargingVoltage;
+			                MaxPower = power;
+			            }
                     }
                 }
                 break;
