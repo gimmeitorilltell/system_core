@@ -81,12 +81,12 @@ void restart_root_service(int fd, void *cookie) {
         }
 
         char build_type[PROPERTY_VALUE_MAX];
-        char slim_version[PROPERTY_VALUE_MAX];
+        char candy_version[PROPERTY_VALUE_MAX];
         property_get("persist.sys.root_access", value, "0");
         property_get("ro.build.type", build_type, "");
-        property_get("ro.slim.version", slim_version, "");
+        property_get("ro.candy.version", candy_version, "");
 
-        if (strlen(slim_version) > 0 && strcmp(build_type, "eng") != 0 && (atoi(value) & 2) != 2) {
+        if (strlen(candy_version) > 0 && strcmp(build_type, "eng") != 0 && (atoi(value) & 2) != 2) {
             WriteFdExactly(fd, "root access is disabled by system setting - enable in settings -> development options\n");
             adb_close(fd);
             return;

@@ -11,7 +11,7 @@ import /init.usb.configfs.rc
 import /init.${ro.zygote}.rc
 
 # Include SLIM's extra init file
-import /init.slim.rc
+import /init.candy.rc
 
 
 on early-init
