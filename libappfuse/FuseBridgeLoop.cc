@@ -173,6 +173,9 @@ class FuseBridgeEntry {
     }
 
     FuseBridgeState ReadFromDevice(FuseBridgeLoopCallback* callback) {
+        // To observe APCT failures.
+        base::ScopedLogSeverity log_severity(base::VERBOSE);
+
         LOG(VERBOSE) << "ReadFromDevice";
         if (!buffer_.request.Read(device_fd_)) {
             return FuseBridgeState::kClosing;
