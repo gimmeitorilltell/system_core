@@ -301,6 +301,10 @@ bool BatteryMonitor::update(void) {
 			              (access(path.string(), R_OK) == 0) ? getIntField(path) :
 			              DEFAULT_VBUS_VOLTAGE;
 
+                        // there are devices that have the file but with a value of 0
+                        if (ChargingVoltage == 0) {
+                            ChargingVoltage = DEFAULT_VBUS_VOLTAGE;
+                        }
 			            double power = ((double)ChargingCurrent / MILLION) *
 				            ((double)ChargingVoltage / MILLION);
 			            if (MaxPower < power) {
@@ -308,7 +312,7 @@ bool BatteryMonitor::update(void) {
 			                props.maxChargingVoltage = ChargingVoltage;
 			                MaxPower = power;
 			            }
-                    }
+                   }
                 }
                 break;
             case ANDROID_POWER_SUPPLY_TYPE_BATTERY:
