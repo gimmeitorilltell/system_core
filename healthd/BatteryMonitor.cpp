@@ -269,41 +269,42 @@ bool BatteryMonitor::update(void) {
                 path.appendFormat("%s/%s/online", POWER_SUPPLY_SYSFS_PATH, name);
                 if (access(path.string(), R_OK) == 0) {
                     mChargerNames.add(String8(name));
-		            if (getIntField(path)) {
-			            path.clear();
-			            path.appendFormat("%s/%s/type", POWER_SUPPLY_SYSFS_PATH,
-					              name);
-			            switch(readPowerSupplyType(path)) {
-			            case ANDROID_POWER_SUPPLY_TYPE_AC:
-			                props.chargerAcOnline = true;
-			                break;
-			            case ANDROID_POWER_SUPPLY_TYPE_USB:
-			                props.chargerUsbOnline = true;
-			                break;
-			            case ANDROID_POWER_SUPPLY_TYPE_WIRELESS:
-			                props.chargerWirelessOnline = true;
-			                break;
-			            default:
-                KLOG_WARNING(LOG_TAG, "%s: Unknown power supply type\n",
-                             mChargerNames[i].string());
-            }
+                    if (readFromFile(path, &buf) > 0) {
+                        if (buf[0] != '0') {
+                            path.clear();
+                            path.appendFormat("%s/%s/type", POWER_SUPPLY_SYSFS_PATH, name);
+                            switch(readPowerSupplyType(path)) {
+                            case ANDROID_POWER_SUPPLY_TYPE_AC:
+                                props.chargerAcOnline = true;
+                                break;
+                            case ANDROID_POWER_SUPPLY_TYPE_USB:
+                                props.chargerUsbOnline = true;
+                                break;
+                            case ANDROID_POWER_SUPPLY_TYPE_WIRELESS:
+                                props.chargerWirelessOnline = true;
+                                break;
+                            default:
+                                continue;
+                            }
+                            int ChargingCurrent =
+                                (access(SYSFS_BATTERY_CURRENT, R_OK) == 0) ? abs(getIntField(String8(SYSFS_BATTERY_CURRENT))) : 0;
 
-            int ChargingCurrent =
-                  (access(SYSFS_BATTERY_CURRENT, R_OK) == 0) ? abs(getIntField(String8(SYSFS_BATTERY_CURRENT))) : 0;
-
-            int ChargingVoltage =
-                  (access(SYSFS_BATTERY_VOLTAGE, R_OK) == 0) ? getIntField(String8(SYSFS_BATTERY_VOLTAGE)) :
-                   DEFAULT_VBUS_VOLTAGE;
-
-            double power = ((double)ChargingCurrent / MILLION) *
-                           ((double)ChargingVoltage / MILLION);
-            if (MaxPower < power) {
-                props.maxChargingCurrent = ChargingCurrent;
-                props.maxChargingVoltage = ChargingVoltage;
-                MaxPower = power;
-            }
-        }
-    }
+                            int ChargingVoltage =
+                                (access(SYSFS_BATTERY_VOLTAGE, R_OK) == 0) ? getIntField(String8(SYSFS_BATTERY_VOLTAGE)) :
+                                DEFAULT_VBUS_VOLTAGE;
+                            // there are devices that have the file but with a value of 0
+                            if (ChargingVoltage == 0) {
+                                ChargingVoltage = DEFAULT_VBUS_VOLTAGE;
+                            }
+                            double power = ((double)ChargingCurrent / MILLION) * ((double)ChargingVoltage / MILLION);
+                            if (MaxPower < power) {
+                                props.maxChargingCurrent = ChargingCurrent;
+                                props.maxChargingVoltage = ChargingVoltage;
+                                MaxPower = power;
+                            }
+                        }
+                    }
+                }
                 break;
             case ANDROID_POWER_SUPPLY_TYPE_BATTERY:
                 break;
